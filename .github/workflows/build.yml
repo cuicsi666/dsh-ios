@@ -35,7 +35,10 @@ jobs:
           du -sh node_modules
           ls node_modules/@deepseek-ai/ | wc -l
 
-      # 2) 交叉编译 Node.js for iOS arm64（失败回退 nodejs-mobile）
+      # 2) 交叉编译 Node.js for iOS arm64（ninja 配方，失败回退 v20）
+      - name: Install ninja
+        run: brew install ninja >/dev/null 2>&1 || true
+
       - name: Build Node for iOS
         run: bash scripts/build_node_ios.sh
 
