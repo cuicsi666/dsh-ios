@@ -15,7 +15,7 @@ env:
 jobs:
   build:
     runs-on: macos-15
-    timeout-minutes: 90
+    timeout-minutes: 150
     steps:
       - uses: actions/checkout@v4
 
@@ -24,6 +24,28 @@ jobs:
         with:
           node-version: "22"
 
+      # 0) 有预编译 node 就直接拿（分钟级），没有才现编
+      - name: Download prebuilt node (if release exists)
+        id: prebuilt
+        run: |
+          mkdir -p resources
+          if gh release view node-bin >/dev/null 2>&1; then
+            gh release download node-bin --pattern "node-ios-arm64" --clobber -D /tmp/nodebin
+            if [ -s /tmp/nodebin/node-ios-arm64 ] && file /tmp/nodebin/node-ios-arm64 | grep -q "Mach-O 64-bit arm64"; then
+              cp /tmp/nodebin/node-ios-arm64 resources/node
+              chmod +x resources/node
+              echo "found=true" >> "$GITHUB_OUTPUT"
+              echo "✅ 复用预编译 node"
+              ls -la resources/node
+            else
+              echo "!! 预编译 node 验证失败，走现编"; rm -rf resources/node
+            fi
+          else
+            echo "!! 无 node-bin release，走现编"
+          fi
+        env:
+          GH_TOKEN: ${{ github.token }}
+
       # 1) 在 runner 上安装 dsh（含 web 客户端 + 全套插件），作为 bundle 资源
       - name: Install dsh bundle
         run: |
@@ -31,20 +53,30 @@ jobs:
           cd resources/dsh
           npm init -y >/dev/null
           npm install @deepseek-ai/dsh@latest 2>&1 | tail -5
-          echo "--- dsh dirs ---"
+          echo "--- dsh ---"
           du -sh node_modules
           ls node_modules/@deepseek-ai/ | wc -l
 
-      # 2) 交叉编译 Node.js for iOS arm64（ninja 配方，失败回退 v20）
+      # 2) 没有预编译 node 才交叉编译（ninja 配方；跨编译较慢，首次 1.5-2h）
       - name: Install ninja (1.10.2, 支持 dupbuild=warn)
+        if: steps.prebuilt.outputs.found != 'true'
         run: |
           curl -fsSL -o /tmp/ninja.zip https://github.com/ninja-build/ninja/releases/download/v1.10.2/ninja-mac.zip
           unzip -o -q /tmp/ninja.zip -d /tmp/ninja-bin
           echo "/tmp/ninja-bin" >> "$GITHUB_PATH"
           ninja --version
 
-      - name: Build Node for iOS
+      - name: Build Node for iOS (若需)
+        if: steps.prebuilt.outputs.found != 'true'
         run: bash scripts/build_node_ios.sh
+
+      - name: Upload node binary to node-bin release (缓存复用)
+        if: steps.prebuilt.outputs.found != 'true'
+        run: |
+          gh release delete node-bin --yes 2>/dev/null || true
+          gh release create node-bin resources/node --title "node-ios-arm64" --notes "Node v$NODE_V for iOS arm64 (交叉编译产物)"
+        env:
+          GH_TOKEN: ${{ github.token }}
 
       # 3) 装配进工程资源目录
       - name: Assemble app resources
