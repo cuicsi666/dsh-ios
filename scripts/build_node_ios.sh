@@ -44,7 +44,7 @@ try_build() {
   fi
 
   echo "==> ninja build node (可 10-20 分钟)"
-  if ! ninja -C out/Release node >>"$LOG" 2>&1; then
+  if ! ninja -C out/Release -w dupbuild=warn node >>"$LOG" 2>&1; then
     echo "!! ninja 失败，日志尾部："; tail -400 "$LOG"; return 1
   fi
 
