@@ -1,0 +1,72 @@
+name: build-ipa
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: dsh-ios-build
+  cancel-in-progress: true
+
+env:
+  NODE_V: "22.22.0"
+
+jobs:
+  build:
+    runs-on: macos-15
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node (tooling)
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      # 1) 在 runner 上安装 dsh（含 web 客户端 + 全套插件），作为 bundle 资源
+      - name: Install dsh bundle
+        run: |
+          mkdir -p resources/dsh
+          cd resources/dsh
+          npm init -y >/dev/null
+          npm install @deepseek-ai/dsh@latest 2>&1 | tail -5
+          echo "--- dsh dirs ---"
+          du -sh node_modules
+          ls node_modules/@deepseek-ai/ | wc -l
+
+      # 2) 交叉编译 Node.js for iOS arm64（失败回退 nodejs-mobile）
+      - name: Build Node for iOS
+        run: bash scripts/build_node_ios.sh
+
+      # 3) 装配进工程资源目录
+      - name: Assemble app resources
+        run: bash scripts/assemble_resources.sh
+
+      # 4) xcodegen + 构建 IPA
+      - name: Generate project
+        run: |
+          brew install xcodegen >/dev/null 2>&1 || brew upgrade xcodegen >/dev/null 2>&1 || true
+          which xcodegen
+
+      - name: Build IPA
+        run: bash scripts/build_ipa.sh
+
+      # 5) 归档/上传
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: dsh助手_ipa
+          path: dist/dsh助手_V1.ipa
+
+      - name: Create GitHub Release
+        if: github.ref == 'refs/heads/main'
+        run: |
+          set -e
+          TAG="V1"
+          gh release view "$TAG" 2>/dev/null && gh release delete "$TAG" --yes 2>/dev/null || true
+          gh release create "$TAG" "dist/dsh助手_V1.ipa" \
+            --title "dsh助手 V1" \
+            --notes "iOS 版 dsh 助手（内嵌 Node + dsh 智能体 + 原生外壳）" || true
+        env:
+          GH_TOKEN: ${{ github.token }}

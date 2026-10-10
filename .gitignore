@@ -1,0 +1,10 @@
+build/
+dist/
+build_tmp/
+DashHarness/dsh/
+DashHarness/node/
+resources/
+*.ipa
+.DS_Store
+node_modules/
+package-lock.json
