@@ -38,6 +38,7 @@ export LDFLAGS="-arch arm64 -isysroot $SDK -mios-version-min=15.0"
 echo "==> configure dest-os=ios dest-cpu=arm64"
 if ! ./configure --without-npm --dest-cpu=arm64 --dest-os=ios \
       --prefix=/node --with-intl=none --cross-compiling \
+      --openssl-no-asm \
       >>"$LOG" 2>&1; then
   echo "!! configure 失败，日志尾部："; tail -60 "$LOG"; exit 1
 fi
