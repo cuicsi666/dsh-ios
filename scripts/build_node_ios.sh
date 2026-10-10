@@ -19,6 +19,10 @@ try_build() {
     && tar xzf node.tar.gz && mv "node-v$V" src)
   cd "$WORK/src"
 
+  echo "==> iOS 补丁：cares 关 HAVE_SYS_RANDOM_H（iOS 无 sys/random.h，走 arc4random_buf）"
+  sed -i '' 's/#define HAVE_SYS_RANDOM_H 1/\/\* #undef HAVE_SYS_RANDOM_H \*\//' deps/cares/config/darwin/ares_config.h \
+    && grep -n "SYS_RANDOM" deps/cares/config/darwin/ares_config.h || true
+
   echo "==> 设置工具链"
   export CC="$(xcrun -sdk iphoneos -find clang)"
   export CXX="$(xcrun -sdk iphoneos -find clang++)"
