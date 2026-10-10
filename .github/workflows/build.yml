@@ -36,8 +36,12 @@ jobs:
           ls node_modules/@deepseek-ai/ | wc -l
 
       # 2) 交叉编译 Node.js for iOS arm64（ninja 配方，失败回退 v20）
-      - name: Install ninja
-        run: brew install ninja >/dev/null 2>&1 || true
+      - name: Install ninja (1.10.2, 支持 dupbuild=warn)
+        run: |
+          curl -fsSL -o /tmp/ninja.zip https://github.com/ninja-build/ninja/releases/download/v1.10.2/ninja-mac.zip
+          unzip -o -q /tmp/ninja.zip -d /tmp/ninja-bin
+          echo "/tmp/ninja-bin" >> "$GITHUB_PATH"
+          ninja --version
 
       - name: Build Node for iOS
         run: bash scripts/build_node_ios.sh
