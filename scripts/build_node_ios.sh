@@ -43,8 +43,8 @@ if ! ./configure --without-npm --dest-cpu=arm64 --dest-os=ios \
   echo "!! configure 失败，日志尾部："; tail -60 "$LOG"; exit 1
 fi
 
-echo "==> make (可能 10-20 分钟)"
-if ! make -j8 >>"$LOG" 2>&1; then
+echo "==> make node (仅主程序，跳过 gtest/测试)"
+if ! make -j8 node >>"$LOG" 2>&1; then
   echo "!! make 失败，日志尾部："; tail -80 "$LOG"; exit 1
 fi
 
