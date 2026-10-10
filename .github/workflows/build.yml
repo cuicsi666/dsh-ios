@@ -49,6 +49,14 @@ jobs:
           brew install xcodegen >/dev/null 2>&1 || brew upgrade xcodegen >/dev/null 2>&1 || true
           which xcodegen
 
+      - name: Upload node build log (artifact)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: node_build_log
+          path: /tmp/node_build.log
+          if-no-files-found: warn
+
       - name: Build IPA
         run: bash scripts/build_ipa.sh
 
