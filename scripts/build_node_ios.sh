@@ -31,6 +31,8 @@ CCFLAGS="-arch arm64 -isysroot $SDK -mios-version-min=15.0"
 export CC="$CC_BIN $CCFLAGS"
 export CXX="$CXX_BIN $CCFLAGS"
 export CPP="$CC_BIN $CCFLAGS -E"
+export CFLAGS="-arch arm64 -isysroot $SDK -mios-version-min=15.0"
+export CXXFLAGS="-std=c++17"
 export AR=$(command -v ar)
 export STRIP=$(xcrun --sdk iphoneos --find strip)
 export LDFLAGS="-arch arm64 -isysroot $SDK -mios-version-min=15.0"
