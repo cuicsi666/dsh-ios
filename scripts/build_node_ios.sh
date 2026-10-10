@@ -23,6 +23,14 @@ try_build() {
   sed -i '' 's/#define HAVE_SYS_RANDOM_H 1/\/\* #undef HAVE_SYS_RANDOM_H \*\//' deps/cares/config/darwin/ares_config.h \
     && grep -n "SYS_RANDOM" deps/cares/config/darwin/ares_config.h || true
 
+  echo "==> iOS 补丁：zlib fdopen 宏与 _stdio.h 碰撞 → 所有 zlib 头末尾追加 undef fdopen"
+  for f in deps/zlib/zutil.h deps/v8/third_party/zlib/zutil.h \
+           deps/zlib/gzguts.h deps/v8/third_party/zlib/gzguts.h \
+           deps/v8/third_party/zlib/zconf.h deps/zlib/zconf.h; do
+    [ -f "$f" ] && printf '\n#ifdef fdopen\n#undef fdopen\n#endif\n' >> "$f"
+  done
+  grep -rln "define fdopen" deps/ 2>/dev/null | head -5 || true
+
   echo "==> 设置工具链"
   export CC="$(xcrun -sdk iphoneos -find clang)"
   export CXX="$(xcrun -sdk iphoneos -find clang++)"
