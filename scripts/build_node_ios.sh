@@ -31,8 +31,8 @@ CCFLAGS="-arch arm64 -isysroot $SDK -mios-version-min=15.0"
 export CC="$CC_BIN $CCFLAGS"
 export CXX="$CXX_BIN $CCFLAGS"
 export CPP="$CC_BIN $CCFLAGS -E"
-export CFLAGS="-arch arm64 -isysroot $SDK -mios-version-min=15.0"
-export CXXFLAGS="-std=c++17"
+export CFLAGS="-arch arm64 -isysroot $SDK -mios-version-min=15.0 -Wno-deprecated-declarations -Wno-deprecated"
+export CXXFLAGS="-std=c++17 -Wno-deprecated-declarations -Wno-deprecated"
 export AR=$(command -v ar)
 export STRIP=$(xcrun --sdk iphoneos --find strip)
 export LDFLAGS="-arch arm64 -isysroot $SDK -mios-version-min=15.0"
@@ -47,7 +47,7 @@ fi
 
 echo "==> make node (仅主程序，跳过 gtest/测试)"
 if ! make -j8 node >>"$LOG" 2>&1; then
-  echo "!! make 失败，日志尾部："; tail -80 "$LOG"; exit 1
+  echo "!! make 失败，日志尾部："; tail -200 "$LOG"; exit 1
 fi
 
 cd ../..
