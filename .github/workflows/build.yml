@@ -57,24 +57,31 @@ jobs:
           du -sh node_modules
           ls node_modules/@deepseek-ai/ | wc -l
 
-      # 1.5) 冒烟测试：先验证 dsh web 入口与参数（runner 本机 node，秒级）
+      # 1.5) 冒烟测试：验证 dsh web 启动 + 打印带 token 的 URL（诊断模式）
       - name: Smoke test dsh web
         run: |
           cd resources/dsh
           ENTRY=node_modules/@deepseek-ai/dsh/lib/bin.js
-          ls -la "$ENTRY" || { echo "!! 入口不存在 $ENTRY"; ls node_modules/@deepseek-ai/dsh/; exit 1; }
-          node "$ENTRY" web --no-open --port 3280 > /tmp/dsh_smoke.log 2>&1 &
-          PID=$!
-          sleep 15
-          CODE=$(curl -s -o /tmp/dsh_smoke_page.html -w "%{http_code}" http://127.0.0.1:3280/ || true)
-          echo "HTTP_CODE=$CODE"
-          [ "$CODE" = "200" ] || [ "$CODE" = "302" ] || [ "$CODE" = "307" ]
-          echo "--- html 前 200 字节 ---"
-          head -c 200 /tmp/dsh_smoke_page.html; echo
-          kill $PID 2>/dev/null || true
-          wait $PID 2>/dev/null || true
-          echo "--- smoke log 尾 ---"
-          tail -15 /tmp/dsh_smoke.log
+          ls -la "$ENTRY" || { echo "!! 入口缺失"; ls node_modules/@deepseek-ai/dsh/; exit 1; }
+          (node "$ENTRY" web --no-open --port 3280 > /tmp/dsh_smoke.log 2>&1 &)
+          sleep 18
+          echo "===== dsh_smoke.log 全文 ====="
+          cat /tmp/dsh_smoke.log
+          TOKEN=$(grep -oE 'token=[A-Za-z0-9_-]{6,}' /tmp/dsh_smoke.log | head -1 | sed 's/token=//')
+          echo "===== TOKEN=${TOKEN:0:6}... (len=${#TOKEN}) ====="
+          if [ -n "$TOKEN" ]; then
+            CODE=$(curl -s -c /tmp/cj -o /tmp/p.html -w "%{http_code}" "http://127.0.0.1:3280/?token=$TOKEN")
+            echo "CODE_WITH_TOKEN=$CODE"
+            echo "--- 响应前 150 字节 ---"; head -c 150 /tmp/p.html; echo
+            CODE2=$(curl -s -b /tmp/cj -o /tmp/p2.html -w "%{http_code}" "http://127.0.0.1:3280/")
+            echo "CODE_PLAIN_WITH_COOKIE=$CODE2"
+            echo "--- 二次响应前 150 字节 ---"; head -c 150 /tmp/p2.html; echo
+          else
+            CODE=$(curl -s -o /tmp/p.html -w "%{http_code}" http://127.0.0.1:3280/)
+            echo "CODE_PLAIN=$CODE"
+            echo "--- 响应前 300 字节 ---"; head -c 300 /tmp/p.html; echo
+          fi
+          pkill -f "dsh.*web --no-open" 2>/dev/null || true
           exit 0
 
       # 2) 没有预编译 node 才交叉编译（ninja 配方；跨编译较慢，首次 1.5-2h）

@@ -91,8 +91,15 @@ struct DashWebView: UIViewRepresentable {
     func updateUIView(_ uiView: WKWebView, context: Context) {}
 
     func load() {
-        let url = URL(string: "http://127.0.0.1:\(port)")!
+        // 首访带 token 换 cookie，之后走干净 URL
+        let url = NodeHost.shared.launchURL() ?? URL(string: "http://127.0.0.1:\(port)")!
         webView.load(URLRequest(url: url))
+        // 3 秒后用干净 URL 再加载一次（cookie 已种下则进入正常页）
+        DispatchQueue.main.asyncAfter(deadline: .now() + 3) { [weak self] in
+            guard let self = self else { return }
+            let plain = URL(string: "http://127.0.0.1:\(self.port)")!
+            self.webView.load(URLRequest(url: plain))
+        }
     }
 
     func makeCoordinator() -> Coordinator { Coordinator(self) }
