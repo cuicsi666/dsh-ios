@@ -30,17 +30,33 @@ jobs:
         run: |
           mkdir -p resources
           if gh release view node-bin >/dev/null 2>&1; then
-            gh release download node-bin --pattern "node-ios-arm64" --clobber -D /tmp/nodebin
-            # Mach-O 64-bit 魔数校验（macOS runner 无 file 命令，用字节头判读）
-            MAGIC=$(head -c 4 /tmp/nodebin/node-ios-arm64 2>/dev/null | od -An -tx1 | tr -d ' \n')
-            if [ -s /tmp/nodebin/node-ios-arm64 ] && [ "$MAGIC" = "cffaedfe" ]; then
+            gh release download node-bin --pattern "node-ios-arm64" --clobber -D /tmp/nodebin || true
+            echo "--- 下载物诊断 ---"
+            ls -la /tmp/nodebin/ 2>/dev/null || echo "!! /tmp/nodebin 空"
+            # Mach-O 64-bit 魔数校验（python3 判读，跨平台稳）
+            python3 - <<'PYEOF'
+import os
+p = '/tmp/nodebin/node-ios-arm64'
+ok = False
+if os.path.exists(p):
+    print('size=', os.path.getsize(p))
+    head = open(p, 'rb').read(4)
+    print('magic=', head.hex())
+    ok = head == bytes.fromhex('cffaedfe')
+else:
+    print('file missing')
+print('VERIFY', 'OK' if ok else 'BAD')
+if not ok:
+    raise SystemExit(1)
+PYEOF
+            if [ $? -eq 0 ]; then
               cp /tmp/nodebin/node-ios-arm64 resources/node
               chmod +x resources/node
               echo "found=true" >> "$GITHUB_OUTPUT"
-              echo "✅ 复用预编译 node (Mach-O arm64, magic=$MAGIC)"
+              echo "✅ 复用预编译 node"
               ls -la resources/node
             else
-              echo "!! 预编译 node 验证失败 magic=$MAGIC，走现编"; rm -rf resources/node
+              echo "!! 预编译 node 验证失败，走现编"; rm -rf resources/node
             fi
           else
             echo "!! 无 node-bin release，走现编"
@@ -104,8 +120,11 @@ jobs:
         continue-on-error: true   # 缓存上传失败不阻塞 IPA 构建
         run: |
           test -f resources/node || { echo "!! resources/node 不存在，跳过缓存上传"; exit 1; }
-          gh release delete node-bin --yes 2>/dev/null || true
-          gh release create node-bin resources/node --title "node-ios-arm64" --notes "Node v20.19.0 for iOS arm64 (交叉编译产物)"
+          if gh release view node-bin >/dev/null 2>&1; then
+            gh release upload node-bin resources/node --clobber
+          else
+            gh release create node-bin resources/node --title "node-ios-arm64" --notes "Node v20.19.0 for iOS arm64 (交叉编译产物)"
+          fi
         env:
           GH_TOKEN: ${{ github.token }}
 
