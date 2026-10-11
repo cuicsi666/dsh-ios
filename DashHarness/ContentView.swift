@@ -6,6 +6,7 @@ struct ContentView: View {
     @State private var navTitle = "dsh 助手"
     @State private var showSpinner = true
     @State private var errorMsg: String?
+    @State private var diagText = "（暂无诊断）"
 
     var body: some View {
         NavigationView {
@@ -22,6 +23,21 @@ struct ContentView: View {
                             errorMsg = nil
                             boot()
                         }.buttonStyle(.borderedProminent)
+                        Button("查看诊断") {
+                            diagText = NodeHost.shared.diagnostics()
+                        }.buttonStyle(.bordered)
+                        if !diagText.isEmpty && diagText != "（暂无诊断）" {
+                            ScrollView {
+                                Text(diagText)
+                                    .font(.system(.caption, design: .monospaced))
+                                    .frame(maxWidth: .infinity, alignment: .leading)
+                                    .padding(8)
+                            }
+                            .frame(maxHeight: 260)
+                            .background(Color(.secondarySystemBackground))
+                            .cornerRadius(10)
+                            .padding(.horizontal)
+                        }
                     }
                 } else {
                     VStack(spacing: 12) {
