@@ -41,7 +41,7 @@ try_build() {
   export CXX_host="$(command -v clang++)"
 
   export CFLAGS="-O -arch arm64 -isysroot $SDK -mios-version-min=15.0 -Wno-deprecated-declarations"
-  export CXXFLAGS="-std=c++17 -O -arch arm64 -isysroot $SDK -mios-version-min=15.0 -Wno-deprecated-declarations"
+  export CXXFLAGS="-std=c++20 -O -arch arm64 -isysroot $SDK -mios-version-min=15.0 -Wno-deprecated-declarations"
   export LDFLAGS="-O -arch arm64 -isysroot $SDK -mios-version-min=15.0"
   export CFLAGS_host="-O"
   export CXXFLAGS_host="-std=c++20 -O -Wno-deprecated-declarations"
