@@ -73,7 +73,7 @@ print('  crypto_context.cc ✅ (两块补丁)')
 
   export CFLAGS="-O -arch arm64 -isysroot $SDK -mios-version-min=15.0 -Wno-deprecated-declarations"
   export CXXFLAGS="-std=c++20 -O -arch arm64 -isysroot $SDK -mios-version-min=15.0 -Wno-deprecated-declarations"
-  export LDFLAGS="-O -arch arm64 -isysroot $SDK -mios-version-min=15.0"
+  export LDFLAGS="-O -arch arm64 -isysroot $SDK -mios-version-min=15.0 -framework Foundation -framework CoreFoundation -framework Security -framework SystemConfiguration -framework CFNetwork"
   export CFLAGS_host="-O"
   export CXXFLAGS_host="-std=c++20 -O -Wno-deprecated-declarations"
   export GYP_DEFINES="target_arch=arm64 v8_target_arch=arm64 ios_target_arch=arm64 host_os=mac OS=ios"
