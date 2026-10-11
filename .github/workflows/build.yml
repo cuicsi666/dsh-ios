@@ -15,7 +15,7 @@ env:
 jobs:
   build:
     runs-on: macos-15
-    timeout-minutes: 150
+    timeout-minutes: 200
     steps:
       - uses: actions/checkout@v4
 

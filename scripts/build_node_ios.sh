@@ -30,6 +30,17 @@ try_build() {
     [ -f "$f" ] && printf '\n#ifdef fdopen\n#undef fdopen\n#endif\n' >> "$f"
   done
 
+  echo "==> iOS 补丁：crypto_context.cc 排除 macOS 专属 kSecTrustSettings 段"
+  python3 -c "
+p='src/crypto/crypto_context.cc'
+s=open(p,encoding='utf-8').read()
+old='#ifdef __APPLE__\nTrustStatus IsTrustDictionaryTrustedForPolicy'
+new='#if defined(__APPLE__) && !defined(__ENVIRONMENT_IPHONE_OS_VERSION_MIN_REQUIRED__)\nTrustStatus IsTrustDictionaryTrustedForPolicy'
+assert old in s, 'crypto_context 补丁模式未命中'
+open(p,'w',encoding='utf-8').write(s.replace(old,new))
+print('  crypto_context.cc ✅')
+"
+
   echo "==> 设置工具链"
   export CC="$(xcrun -sdk iphoneos -find clang)"
   export CXX="$(xcrun -sdk iphoneos -find clang++)"
