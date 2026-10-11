@@ -34,11 +34,31 @@ try_build() {
   python3 -c "
 p='src/crypto/crypto_context.cc'
 s=open(p,encoding='utf-8').read()
-old='#ifdef __APPLE__\nTrustStatus IsTrustDictionaryTrustedForPolicy'
-new='#if defined(__APPLE__) && !defined(__ENVIRONMENT_IPHONE_OS_VERSION_MIN_REQUIRED__)\nTrustStatus IsTrustDictionaryTrustedForPolicy'
-assert old in s, 'crypto_context 补丁模式未命中'
-open(p,'w',encoding='utf-8').write(s.replace(old,new))
-print('  crypto_context.cc ✅')
+
+old1='#ifdef __APPLE__\nTrustStatus IsTrustDictionaryTrustedForPolicy'
+new1='#if defined(__APPLE__) && !defined(__ENVIRONMENT_IPHONE_OS_VERSION_MIN_REQUIRED__)\nTrustStatus IsTrustDictionaryTrustedForPolicy'
+assert old1 in s, '补丁1 未命中'
+s=s.replace(old1,new1)
+
+old2='''#ifdef __APPLE__
+  ReadMacOSKeychainCertificates(&system_store_certs);
+#endif
+#ifdef _WIN32
+  ReadWindowsCertificates(&system_store_certs);
+#endif
+#if !defined(__APPLE__) && !defined(_WIN32)
+  GetOpenSSLSystemCertificates(&system_store_certs);
+#endif'''
+new2='''#if defined(__APPLE__) && !defined(__ENVIRONMENT_IPHONE_OS_VERSION_MIN_REQUIRED__)
+  ReadMacOSKeychainCertificates(&system_store_certs);
+#elif !defined(_WIN32)
+  GetOpenSSLSystemCertificates(&system_store_certs);
+#endif'''
+assert old2 in s, '补丁2 未命中'
+s=s.replace(old2,new2)
+
+open(p,'w',encoding='utf-8').write(s)
+print('  crypto_context.cc ✅ (两块补丁)')
 "
 
   echo "==> 设置工具链"
