@@ -11,12 +11,9 @@ targets:
     deploymentTarget: "15.0"
     sources:
       - path: DashHarness
-      - path: DashHarness/dsh
-        type: folder
-        buildPhase: resources
-      - path: DashHarness/node
-        type: folder
-        buildPhase: resources
+        excludes:
+          - dsh
+          - node
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.cuicsi.dsh
