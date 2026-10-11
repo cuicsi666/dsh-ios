@@ -10,7 +10,7 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  NODE_V: "20.19.0"
+  NODE_V: "22.23.3"
 
 jobs:
   build:
