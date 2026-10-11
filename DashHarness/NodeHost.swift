@@ -10,6 +10,8 @@ final class NodeHost {
     private var nodePID: pid_t = -1
     private(set) var serverLogPath: String = ""
     private(set) var lastSpawnErrno: Int32 = 0
+    private(set) var probeErrno: Int32 = 0
+    private(set) var probeResult: String = ""
     private var probeLogPath: String = ""
 
     private var baseURL: URL {
@@ -115,13 +117,15 @@ final class NodeHost {
         let pid = UnsafeMutablePointer<pid_t>.allocate(capacity: 1)
         let r = posix_spawn(pid, bin, &actions, nil, &cargv, nil)
         if actions != nil { posix_spawn_file_actions_destroy(&actions) }
+        probeErrno = r
         if r == 0 {
             var status: Int32 = 0
             waitpid(pid.pointee, &status, 0)
-            lastSpawnErrno = 0
-            NSLog("[NodeHost] node --version 自检 ok status=%d", status)
+            let log = (try? String(contentsOfFile: probeLogPath, encoding: .utf8)) ?? ""
+            probeResult = log.trimmingCharacters(in: .whitespacesAndNewlines)
+            NSLog("[NodeHost] node --version 自检 ok status=%d out=%@", status, probeResult)
         } else {
-            lastSpawnErrno = r
+            probeResult = ""
             NSLog("[NodeHost] node --version 自检失败 errno=%d", r)
         }
         pid.deallocate()
@@ -135,9 +139,7 @@ final class NodeHost {
         out.append("spawn errno: \(lastSpawnErrno) (\(lastSpawnErrno == 0 ? "-" : String(cString: strerror(lastSpawnErrno))))")
         out.append("进程: pid=\(nodePID) running=\(isRunning)")
         out.append("日志: \(serverLogPath.isEmpty ? "无" : serverLogPath)")
-        if let content = try? String(contentsOfFile: probeLogPath, encoding: .utf8) {
-            out.append("node 自检: \(content.trimmingCharacters(in: .whitespacesAndNewlines))")
-        }
+        out.append("node 自检 errno: \(probeErrno) (\(probeErrno == 0 ? "-" : String(cString: strerror(probeErrno)))) out=[\(probeResult)]")
         if !serverLogPath.isEmpty, let content = try? String(contentsOfFile: serverLogPath, encoding: .utf8) {
             let lines = content.split(separator: "\n")
             out.append("--- server log 尾 ---\n" + lines.suffix(25).joined(separator: "\n"))

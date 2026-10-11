@@ -24,6 +24,27 @@ cp "$ROOT/resources/node" "$APP/node/node"
 chmod +x "$APP/node/node"
 du -sh "$APP"
 
+echo "==> ldid 伪签名全部 Mach-O（侧载多二进制兼容，防装签工具漏签）"
+which ldid >/dev/null 2>&1 || brew install ldid >/dev/null 2>&1 || true
+export SIGN_APP="$APP"
+python3 - <<'EOF'
+import os, subprocess
+app = os.environ['SIGN_APP']
+machos = 0
+for root, dirs, files in os.walk(app):
+    for f in files:
+        p = os.path.join(root, f)
+        try:
+            with open(p, 'rb') as fh:
+                magic = fh.read(4)
+        except Exception:
+            continue
+        if magic in (b'\xcf\xfa\xed\xfe', b'\xfe\xed\xfa\xcf', b'\xca\xfe\xba\xbe', b'\xce\xfa\xed\xfe'):
+            subprocess.run(['ldid', '-S', p], check=False)
+            machos += 1
+print(f'ldid 伪签名 {machos} 个 Mach-O OK')
+EOF
+
 echo "==> 手动打包 IPA"
 rm -rf dist pack_tmp && mkdir -p pack_tmp/Payload dist
 cp -R "$APP" pack_tmp/Payload/
