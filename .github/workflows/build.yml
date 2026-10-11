@@ -99,11 +99,23 @@ jobs:
 
       - name: Upload node binary to node-bin release (缓存复用)
         if: steps.prebuilt.outputs.found != 'true'
+        continue-on-error: true   # 缓存上传失败不阻塞 IPA 构建
         run: |
+          test -f resources/node || { echo "!! resources/node 不存在，跳过缓存上传"; exit 1; }
           gh release delete node-bin --yes 2>/dev/null || true
-          gh release create node-bin resources/node --title "node-ios-arm64" --notes "Node v$NODE_V for iOS arm64 (交叉编译产物)"
+          gh release create node-bin resources/node --title "node-ios-arm64" --notes "Node v20.19.0 for iOS arm64 (交叉编译产物)"
         env:
           GH_TOKEN: ${{ github.token }}
+
+      # node 二进制 artifact 兜底：run 任何后续步骤挂掉都能从 artifact 捞回，免重编 45 分钟
+      - name: Upload node binary (artifact 兜底)
+        if: always()
+        continue-on-error: true
+        uses: actions/upload-artifact@v4
+        with:
+          name: node-ios-arm64-bin
+          path: resources/node
+          if-no-files-found: warn
 
       # 3) 装配进工程资源目录
       - name: Assemble app resources
