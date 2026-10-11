@@ -31,14 +31,16 @@ jobs:
           mkdir -p resources
           if gh release view node-bin >/dev/null 2>&1; then
             gh release download node-bin --pattern "node-ios-arm64" --clobber -D /tmp/nodebin
-            if [ -s /tmp/nodebin/node-ios-arm64 ] && file /tmp/nodebin/node-ios-arm64 | grep -q "Mach-O 64-bit arm64"; then
+            # Mach-O 64-bit 魔数校验（macOS runner 无 file 命令，用字节头判读）
+            MAGIC=$(head -c 4 /tmp/nodebin/node-ios-arm64 2>/dev/null | od -An -tx1 | tr -d ' \n')
+            if [ -s /tmp/nodebin/node-ios-arm64 ] && [ "$MAGIC" = "cffaedfe" ]; then
               cp /tmp/nodebin/node-ios-arm64 resources/node
               chmod +x resources/node
               echo "found=true" >> "$GITHUB_OUTPUT"
-              echo "✅ 复用预编译 node"
+              echo "✅ 复用预编译 node (Mach-O arm64, magic=$MAGIC)"
               ls -la resources/node
             else
-              echo "!! 预编译 node 验证失败，走现编"; rm -rf resources/node
+              echo "!! 预编译 node 验证失败 magic=$MAGIC，走现编"; rm -rf resources/node
             fi
           else
             echo "!! 无 node-bin release，走现编"
