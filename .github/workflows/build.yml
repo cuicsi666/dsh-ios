@@ -30,11 +30,14 @@ jobs:
         run: |
           mkdir -p resources
           if gh release view node-bin >/dev/null 2>&1; then
-            gh release download node-bin --pattern "node-ios-arm64" --clobber -D /tmp/nodebin || true
+            gh release download node-bin --pattern "node-ios-arm64" --pattern "node-version.txt" --clobber -D /tmp/nodebin || true
             echo "--- 下载物诊断 ---"
             ls -la /tmp/nodebin/ 2>/dev/null || echo "!! /tmp/nodebin 空"
-            # Mach-O 64-bit 魔数校验（python3 判读，跨平台稳，无 heredoc 防 YAML 截断）
-            if python3 -c "import os,sys; p='/tmp/nodebin/node-ios-arm64'; ok=os.path.exists(p) and open(p,'rb').read(4)==bytes.fromhex('cffaedfe'); print('size=',os.path.getsize(p) if os.path.exists(p) else 0,'VERIFY','OK' if ok else 'BAD'); sys.exit(0 if ok else 1)"; then
+            VERFILE=""
+            [ -f /tmp/nodebin/node-version.txt ] && VERFILE=$(cat /tmp/nodebin/node-version.txt)
+            echo "缓存版本: [$VERFILE] 期望版本: [$NODE_V]"
+            # Mach-O 64-bit 魔数 + 版本双重校验（python3 判读，跨平台稳，无 heredoc 防 YAML 截断）
+            if [ "$VERFILE" = "$NODE_V" ] && python3 -c "import os,sys; p='/tmp/nodebin/node-ios-arm64'; ok=os.path.exists(p) and open(p,'rb').read(4)==bytes.fromhex('cffaedfe'); print('size=',os.path.getsize(p) if os.path.exists(p) else 0,'VERIFY','OK' if ok else 'BAD'); sys.exit(0 if ok else 1)"; then
               cp /tmp/nodebin/node-ios-arm64 resources/node
               chmod +x resources/node
               echo "found=true" >> "$GITHUB_OUTPUT"
@@ -108,10 +111,11 @@ jobs:
         continue-on-error: true   # 缓存上传失败不阻塞 IPA 构建
         run: |
           test -f resources/node || { echo "!! resources/node 不存在，跳过缓存上传"; exit 1; }
+          printf '%s' "$NODE_V" > /tmp/node-version.txt
           if gh release view node-bin >/dev/null 2>&1; then
-            gh release upload node-bin resources/node --clobber
+            gh release upload node-bin "resources/node#node-ios-arm64" "/tmp/node-version.txt#node-version.txt" --clobber
           else
-            gh release create node-bin resources/node --title "node-ios-arm64" --notes "Node v20.19.0 for iOS arm64 (交叉编译产物)"
+            gh release create node-bin "resources/node#node-ios-arm64" "/tmp/node-version.txt#node-version.txt" --title "node-ios-arm64" --notes "Node v$NODE_V for iOS arm64 (交叉编译产物)"
           fi
         env:
           GH_TOKEN: ${{ github.token }}
