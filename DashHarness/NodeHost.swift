@@ -52,20 +52,20 @@ final class NodeHost {
         defer { cenv.forEach { if let p = $0 { free(p) } } }
 
         // stdout/stderr 重定向到日志文件（posix_spawn_file_actions）
-        var actions: posix_spawn_file_actions_t?
+        var actions: posix_spawn_file_actions_t? = nil
         posix_spawn_file_actions_init(&actions)
-        if let a = actions {
+        if actions != nil {
             _ = serverLogPath.withCString { path in
-                posix_spawn_file_actions_addopen(&a, 1, path, O_WRONLY | O_CREAT | O_TRUNC, 0o644)
-                    + posix_spawn_file_actions_addopen(&a, 2, path, O_WRONLY | O_CREAT | O_APPEND, 0o644)
+                posix_spawn_file_actions_addopen(&actions, 1, path, O_WRONLY | O_CREAT | O_TRUNC, 0o644)
+                    + posix_spawn_file_actions_addopen(&actions, 2, path, O_WRONLY | O_CREAT | O_APPEND, 0o644)
             }
         }
 
         let pid = UnsafeMutablePointer<pid_t>.allocate(capacity: 1)
         defer { pid.deallocate() }
 
-        let r = posix_spawn(pid, bin, actions, nil, &cargv, &cenv)
-        if let a = actions { posix_spawn_file_actions_destroy(&a) }
+        let r = posix_spawn(pid, bin, &actions, nil, &cargv, &cenv)
+        if actions != nil { posix_spawn_file_actions_destroy(&actions) }
         if r == 0 {
             nodePID = pid.pointee
             NSLog("[NodeHost] spawned pid=%d log=%@", nodePID, serverLogPath)
